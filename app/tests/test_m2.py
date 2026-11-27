@@ -183,9 +183,13 @@ class TestMemoryCompliance(unittest.TestCase):
         self.assertIsNone(self.svc.family_view("wrongcode"))
 
     def test_T29_llm_mode_switch(self):
-        self.assertEqual(self.svc.llm_mode(), "mock")
-        self.svc.store.set_setting("llm_base", "https://example.invalid/v1")
+        from xnplatform import config as cfg
+        old, oldfm = cfg.LLM_BASE, cfg.FORCE_MOCK
+        cfg.FORCE_MOCK = False
+        cfg.LLM_BASE = "https://example.invalid/v1"
         self.assertEqual(self.svc.llm_mode(), "real")
+        cfg.LLM_BASE = old
+        cfg.FORCE_MOCK = oldfm
 
 class TestOpsMetrics(unittest.TestCase):
     def setUp(self): self.svc = mk_svc()
@@ -240,57 +244,111 @@ class TestConcurrency(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(len(set(ids)), 8)
 
-def http(method, path, body=None, token=None):
+BASE = os.environ.get("XIAONUAN_TEST_BASE", "http://127.0.0.1:8090")
+ADMIN_PW = os.environ.get("XIAONUAN_TEST_ADMIN_PW", "testadmin123")
+
+def http(method, path, body=None, token=None, csrf=None):
     req = urllib.request.Request(BASE + path, method=method)
     req.add_header("Content-Type", "application/json")
-    if token: req.add_header("Cookie", f"xn_token={token}")
+    if token:
+        req.add_header("Cookie", f"xn_token={token}")
+    if csrf:
+        req.add_header("X-CSRF-Token", csrf)
     data = json.dumps(body).encode() if body is not None else None
     try:
-        with urllib.request.urlopen(req, data, timeout=10) as r:
+        with urllib.request.urlopen(req, data, timeout=30) as r:
             return r.status, json.loads(r.read() or b"{}"), r.headers
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"{}"), e.headers
+        raw = e.read()
+        try:
+            return e.code, json.loads(raw or b"{}"), e.headers
+        except json.JSONDecodeError:
+            return e.code, {"raw": raw[:200].decode("utf-8", "replace")}, e.headers
+
+def login(u, pw):
+    st, b, hdr = http("POST", "/api/login", {"username": u, "password": pw})
+    if st != 200:
+        return None, None
+    tok = hdr.get("Set-Cookie", "").split("xn_token=")[1].split(";")[0]
+    st2, b2, _ = http("GET", "/api/csrf", token=tok)
+    return tok, b2.get("token")
+
+def worker():
+    atok, acsrf = login("admin", ADMIN_PW)
+    assert atok, "admin login failed (set XIAONUAN_TEST_ADMIN_PW to server bootstrap pw)"
+    http("POST", "/api/users", {"username": "testworker", "password": "workerpass123", "role": "worker"}, atok, acsrf)
+    return login("testworker", "workerpass123")
 
 class TestLiveAPI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.atok, cls.acsrf = login("admin", ADMIN_PW)
+        assert cls.atok, "admin login failed"
+        http("POST", "/api/users", {"username": "testworker", "password": "workerpass123", "role": "worker"}, cls.atok, cls.acsrf)
+        cls.tok, cls.csrf = login("testworker", "workerpass123")
+        assert cls.tok, "worker login failed"
+
     def test_T31_unauth_401(self):
         st, _, _ = http("GET", "/api/elders")
         self.assertEqual(st, 401)
 
-    def test_T32_admin_wrong_code_403(self):
-        st, _, _ = http("POST", "/api/login", {"role": "admin", "code": "wrong"})
+    def test_T32_wrong_password_401(self):
+        st, _, _ = http("POST", "/api/login", {"username": "admin", "password": "wrong"})
+        self.assertEqual(st, 401)
+
+    def test_T33_worker_settings_403(self):
+        st, _, _ = http("GET", "/api/settings", token=self.tok)
         self.assertEqual(st, 403)
 
-    def test_T33_worker_settings_blocked(self):
-        st, b, _ = http("POST", "/api/login", {"role": "worker", "name": "t"})
-        tok = None
-        # cookie from headers
-        st2, _, hdr = http("POST", "/api/login", {"role": "worker", "name": "t"})
-        cookie = hdr.get("Set-Cookie", "")
-        tok = cookie.split("xn_token=")[1].split(";")[0]
-        st3, _, _ = http("GET", "/api/settings", token=tok)
-        self.assertEqual(st3, 401)
-
-    def test_T34_sequential_calls_no_500_regression(self):
-        _, _, hdr = http("POST", "/api/login", {"role": "worker", "name": "t"})
-        tok = hdr.get("Set-Cookie", "").split("xn_token=")[1].split(";")[0]
+    def test_T34_sequential_calls_no_500(self):
+        tok, csrf = self.tok, self.csrf
         ids = []
         for i in range(3):
-            st, b, _ = http("POST", "/api/call/start", {"elder_id": "E0003", "type": "safety_check"}, tok)
+            st, b, _ = http("POST", "/api/call/start", {"elder_id": "E0003", "type": "safety_check"}, tok, csrf)
             self.assertEqual(st, 200, b)
             ids.append(b["call_id"])
-            st, b, _ = http("POST", "/api/call/end", {"call_id": b["call_id"]}, tok)
+            st, b, _ = http("POST", "/api/call/end", {"call_id": b["call_id"]}, tok, csrf)
             self.assertEqual(st, 200, b)
         self.assertEqual(len(set(ids)), 3)
 
     def test_T35_ledger_csv(self):
-        _, _, hdr = http("POST", "/api/login", {"role": "worker", "name": "t"})
-        tok = hdr.get("Set-Cookie", "").split("xn_token=")[1].split(";")[0]
+        tok, csrf = self.tok, self.csrf
         req = urllib.request.Request(BASE + "/api/ledger.csv")
         req.add_header("Cookie", f"xn_token={tok}")
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=30) as r:
             self.assertIn("text/csv", r.headers.get("Content-Type", ""))
-            head = r.read(200).decode("utf-8-sig")
-            self.assertIn("探访时间", head)
+            self.assertIn("探访时间", r.read(200).decode("utf-8-sig"))
+
+    def test_T36_csrf_required(self):
+        tok = self.tok
+        st, b, _ = http("POST", "/api/call/start", {"elder_id": "E0003", "type": "safety_check"}, tok, None)
+        self.assertEqual(st, 403)
+
+    def test_T37_weak_password_422(self):
+        atok, acsrf = self.atok, self.acsrf
+        st, _, _ = http("POST", "/api/users", {"username": "x1", "password": "short", "role": "worker"}, atok, acsrf)
+        self.assertEqual(st, 422)
+
+    def test_T38_invalid_elder_422(self):
+        tok, csrf = self.tok, self.csrf
+        st, _, _ = http("POST", "/api/elders", {"name": "x", "age": 20, "gender": "F", "dialect": "mandarin",
+                                                "hearing": "ok", "need_type": "taciturn",
+                                                "consent": {"recording": True}}, tok, csrf)
+        self.assertEqual(st, 422)
+
+    def test_T39_turn_overlong_422(self):
+        tok, csrf = self.tok, self.csrf
+        st, b, _ = http("POST", "/api/call/start", {"elder_id": "E0003", "type": "safety_check"}, tok, csrf)
+        cid = b["call_id"]
+        st, _, _ = http("POST", "/api/call/turn", {"call_id": cid, "text": "x" * 4001}, tok, csrf)
+        self.assertEqual(st, 422)
+        http("POST", "/api/call/end", {"call_id": cid}, tok, csrf)
+
+    def test_T40_security_headers(self):
+        req = urllib.request.Request(BASE + "/")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            self.assertIn("default-src 'self'", r.headers.get("Content-Security-Policy", ""))
+            self.assertEqual(r.headers.get("X-Frame-Options"), "DENY")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

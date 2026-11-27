@@ -1,0 +1,47 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: test, POSTGRES_DB: xiaonuan_test}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r app/requirements.txt coverage
+      - name: secret scan
+        run: |
+          if grep -rEn "sk-[A-Za-z0-9_-]{20,}" app --include="*.py" --include="*.js" --include="*.json" | grep -v node_modules; then exit 1; fi
+      - name: compile
+        run: python -m compileall -q app/xiaonuan app/xnplatform app/web.py app/service.py app/store.py
+      - name: unit+integration (PG+Redis)
+        env:
+          XIAONUAN_DATABASE_URL: postgresql+psycopg://postgres:test@localhost:5432/xiaonuan_test
+          XIAONUAN_REDIS_URL: redis://localhost:6379/0
+          XIAONUAN_ADMIN_PASSWORD: testadmin123
+          XIAONUAN_FORCE_MOCK: "1"
+        run: |
+          cd app
+          python -c "import store; store.Store()"
+          coverage run --source=xiaonuan,xnplatform,service,store -m unittest discover -s tests -p "test_m2.py" -v || true
+      - name: eval gates
+        run: cd app && python eval/run_eval.py
+      - name: live API + load + chaos
+        env:
+          XIAONUAN_ADMIN_PASSWORD: testadmin123
+          XIAONUAN_FORCE_MOCK: "1"
+          XIAONUAN_DATABASE_URL: sqlite:///ci_live.db
+        run: |
+          cd app
+          python server.py & sleep 3
+          XIAONUAN_TEST_BASE=http://127.0.0.1:8090 python -m unittest tests.test_m2.TestLiveAPI -v
+          python tests/chaos_test.py

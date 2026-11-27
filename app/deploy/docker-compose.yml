@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: xiaonuan
+      POSTGRES_USER: xiaonuan
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?set in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xiaonuan"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+  app:
+    build: .
+    environment:
+      XIAONUAN_DATABASE_URL: postgresql+psycopg://xiaonuan:${PG_PASSWORD}@db:5432/xiaonuan
+      XIAONUAN_REDIS_URL: redis://redis:6379/0
+      XIAONUAN_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set in .env}
+      XIAONUAN_LLM_BASE: ${LLM_BASE:-}
+      XIAONUAN_LLM_KEY: ${LLM_KEY:-}
+      XIAONUAN_LLM_MODEL: ${LLM_MODEL:-qwen-plus}
+      XIAONUAN_CORS: ${CORS:-https://your-domain.example}
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_started}
+    ports: ["8090:8090"]
+    restart: unless-stopped
+volumes:
+  pgdata:
+  redisdata:

@@ -14,3 +14,9 @@ ppt_build/
 node_modules/
 .chart-data-*/
 push_repo.py
+
+.venv/
+.secrets.json
+logs/
+*.db
+app/static/voice/
