@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      XIAONUAN_FORCE_MOCK: "1"
+      XIAONUAN_ADMIN_PASSWORD: testadmin123
+      XIAONUAN_TEST_ADMIN_PW: testadmin123
+      XIAONUAN_DATABASE_URL: "sqlite:///./ci.db"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt pytest httpx
+      - name: Offline demo + eval gate
+        run: |
+          python -m xiaonuan.demo
+          python eval/run_eval.py
+      - name: Start workbench server (mock LLM, fresh DB)
+        run: |
+          python server.py &
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null http://127.0.0.1:8090/ && break
+            sleep 1
+          done
+      - name: M2 boundary tests (in-process + live API)
+        run: python -m pytest tests/test_m2.py -q
