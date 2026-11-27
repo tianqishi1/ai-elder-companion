@@ -1,0 +1,19 @@
+{
+  "red": [
+    {"type":"chest_pain","keywords":["胸口痛","胸痛","喘不上气","胸口闷得很","心口翳住"]},
+    {"type":"fall_cannot_rise","keywords":["摔倒了起不来","跌倒起不来","爬不起来"]},
+    {"type":"suicide_ideation","keywords":["不想活","自杀","活着没意思"]},
+    {"type":"scam_in_progress","keywords":["让我转账","要我汇款","验证码给他","安全账户"]}
+  ],
+  "orange": [
+    {"type":"fall","keywords":["滑了一跤","摔了一跤","跌倒","搞拐了"]},
+    {"type":"med_stopped","keywords":["停药","药停了","不想吃药","没吃药"]},
+    {"type":"no_food","keywords":["好几天没吃饭","断粮","没得吃的"]},
+    {"type":"persistent_low","keywords":["心里难受得很","一直高兴不起来"]}
+  ],
+  "yellow": [
+    {"type":"poor_sleep","keywords":["睡不好","失眠"]},
+    {"type":"low_appetite","keywords":["没胃口","吃不下"]},
+    {"type":"lonely","keywords":["闷得慌","孤单","没人说话"]}
+  ]
+}

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小暖 · AI 电话关怀试点工作台</title>
+<style>
+:root{--bg:#FBF6EF;--card:#fff;--ink:#1C1917;--body:#44403C;--muted:#78716C;--accent:#C2410C;--deep:#7C2D12;--soft:#FBE8D8;--line:#E7DED2;--red:#B91C1C;--orange:#C2410C;--yellow:#A16207;--green:#15803D}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--body);font-size:14px}
+header{background:var(--deep);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px}
+header h1{font-size:18px}
+header .mode{font-size:12px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px}
+header .sp{flex:1}
+nav{display:flex;gap:4px;padding:10px 24px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav button{border:none;background:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--body)}
+nav button.on{background:var(--soft);color:var(--deep);font-weight:700}
+main{padding:20px 24px;max-width:1200px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:16px;color:var(--ink);margin-bottom:10px}
+h3{font-size:14px;color:var(--deep);margin:10px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+button.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px}
+button.btn.sec{background:#fff;color:var(--deep);border:1px solid var(--accent)}
+button.btn:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fff}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .v{font-size:26px;font-weight:700;color:var(--accent)}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:4px}
+.tag.red{background:#FEE2E2;color:var(--red)}.tag.orange{background:var(--soft);color:var(--orange)}
+.tag.yellow{background:#FEF9C3;color:var(--yellow)}.tag.none{background:#F5F5F4;color:var(--muted)}
+.tag.green{background:#DCFCE7;color:var(--green)}
+#chat{height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:12px;background:#FFFDF9;margin:10px 0}
+.msg{margin-bottom:10px;max-width:80%}
+.msg .who{font-size:11px;color:var(--muted);margin-bottom:2px}
+.msg .bub{padding:8px 12px;border-radius:10px;font-size:14px;line-height:1.6}
+.msg.ai .bub{background:var(--soft);color:var(--deep)}
+.msg.elder{margin-left:auto}.msg.elder .bub{background:#F5F5F4}
+.msg.elder .who{text-align:right}
+.msg.sys{max-width:100%}.msg.sys .bub{background:none;color:var(--muted);font-size:12px;padding:2px 0}
+.banner{padding:10px 14px;border-radius:10px;margin:8px 0;font-size:13px}
+.banner.red{background:#FEE2E2;color:var(--red);border:1px solid var(--red)}
+.banner.info{background:var(--soft);color:var(--deep)}
+.chips{font-size:12px;color:var(--muted);margin:6px 0}
+.hidden{display:none}
+pre{background:#F5F5F4;border-radius:8px;padding:12px;font-size:12px;overflow:auto;max-height:320px;white-space:pre-wrap}
+.login{max-width:380px;margin:80px auto}
+.note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="loginView" class="login card">
+  <h2>小暖 · AI 电话关怀试点工作台</h2>
+  <p class="note">M2 试点版：浏览器模拟通话（语音/文字），真实电话线路为外部接入位。通话内容按知情同意与分层保留策略存储。</p>
+  <label>姓名</label><input id="loginName" placeholder="社工/运营姓名" style="width:100%">
+  <label>角色</label>
+  <select id="loginRole" style="width:100%"><option value="worker">社工 / 运营</option><option value="admin">管理员</option></select>
+  <div id="adminCodeWrap" class="hidden"><label>管理员口令</label><input id="adminCode" type="password" style="width:100%"></div>
+  <div style="margin-top:14px"><button class="btn" onclick="login()">进入工作台</button></div>
+  <p class="note">家属请使用「家属视图」页，输入老人专属访问码。</p>
+</div>
+
+<div id="appView" class="hidden">
+<header>
+  <h1>小暖 · 试点工作台</h1>
+  <span class="mode" id="modeBadge">LLM: 演示模式</span>
+  <span class="sp"></span>
+  <span id="whoami" style="font-size:13px"></span>
+  <button class="btn sec" onclick="logout()">退出</button>
+</header>
+<nav id="nav"></nav>
+<main>
+  <section id="v-elders">
+    <div class="card"><h2>老人档案</h2>
+      <div class="row">
+        <button class="btn" onclick="showElderForm()">+ 新建档案（需知情同意）</button>
+        <button class="btn sec" onclick="loadElders()">刷新</button>
+        <div><label>筛选·方言</label><select id="fltDialect" onchange="renderElders()"><option value="">全部</option><option value="mandarin">普通话</option><option value="sichuan">四川话</option><option value="cantonese">粤语</option></select></div>
+        <div><label>筛选·分型</label><select id="fltNeed" onchange="renderElders()"><option value="">全部</option><option value="lonely_chatty">孤独倾诉型</option><option value="taciturn">寡言少语型</option><option value="health_anxious">健康焦虑型</option><option value="hearing_loss">听力障碍型</option><option value="cognitive_decline">认知下降型</option><option value="wary_refusal">警惕拒接型</option></select></div>
+        <div><label>筛选·关键词</label><input id="fltKw" placeholder="姓名/ID" oninput="renderElders()"></div>
+      </div>
+      <div id="elderForm" class="hidden" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+        <div class="row">
+          <div><label>姓名</label><input id="f_name"></div>
+          <div><label>年龄</label><input id="f_age" type="number" value="75" style="width:80px"></div>
+          <div><label>性别</label><select id="f_gender"><option value="F">女</option><option value="M">男</option></select></div>
+          <div><label>方言</label><select id="f_dialect"><option value="mandarin">普通话</option><option value="sichuan">四川话</option><option value="cantonese">粤语</option></select></div>
+          <div><label>听力</label><select id="f_hearing"><option value="ok">正常</option><option value="mild_loss">轻度障碍</option></select></div>
+          <div><label>需求分型</label><select id="f_need"><option value="lonely_chatty">孤独倾诉型</option><option value="taciturn">寡言少语型</option><option value="health_anxious">健康焦虑型</option><option value="hearing_loss">听力障碍型</option><option value="cognitive_decline">认知下降型</option><option value="wary_refusal">警惕拒接型</option></select></div>
+        </div>
+        <div class="row">
+          <div style="flex:1"><label>用药（名称,时间; 多个用分号）</label><input id="f_meds" placeholder="氨氯地平,08:00" style="width:100%"></div>
+          <div style="flex:1"><label>家属（关系:姓名; 多个用分号）</label><input id="f_family" placeholder="女儿:李娟" style="width:100%"></div>
+        </div>
+        <label style="display:flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="f_consent" style="width:auto"> 已签署知情同意：录音告知 + AI 身份明示 + 随时可退订</label>
+        <div style="margin-top:10px"><button class="btn" onclick="createElder()">保存档案</button></div>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>ID</th><th>姓名</th><th>方言/听力</th><th>分型</th><th>家属访问码</th><th></th></tr></thead><tbody id="elderRows"></tbody></table>
+    </div>
+    <div class="card hidden" id="elderDetail"></div>
+  </section>
+
+  <section id="v-call" class="hidden">
+    <div class="card"><h2>关怀通话（浏览器模拟：语音或文字）</h2>
+      <div class="row">
+        <div><label>老人</label><select id="callElder"></select></div>
+        <div><label>通话类型</label><select id="callType"><option value="companion_chat">陪伴聊天</option><option value="med_remind">用药提醒</option><option value="health_check">健康问询</option><option value="safety_check">平安确认</option></select></div>
+        <button class="btn" id="btnStart" onclick="startCall()">发起通话</button>
+        <button class="btn sec" id="btnNoAnswer" onclick="markNoAnswer()">标记未接通</button>
+        <button class="btn sec" id="btnVoice" onclick="toggleVoice()">🎙 语音模式：关</button>
+        <button class="btn hidden" id="btnTalk" onclick="talkToggle()">🎙 开始说话</button>
+        <button class="btn sec hidden" id="btnEnd" onclick="endCall()">结束通话</button>
+      </div>
+      <div id="escBanner"></div>
+      <div id="chat" class="hidden"></div>
+      <div class="chips" id="stateChips"></div>
+      <div id="voiceNote"></div>
+      <div class="row hidden" id="inputRow">
+        <input id="elderInput" placeholder="输入老人说的话（或开语音模式直接说）" style="flex:1" onkeydown="if(event.key==='Enter')sendTurn()">
+        <button class="btn" onclick="sendTurn()">发送</button>
+      </div>
+      <div id="callResult"></div>
+      <p class="note">语音模式使用浏览器语音识别与合成（普通话）；方言全链路需接入 Fun-ASR + CosyVoice 电话管线。红色风险实时升级：自动派单 + 通知家属与网格员。</p>
+    </div>
+    <div class="card"><h2>待呼任务（周计划 / 未接通升级链）</h2>
+      <button class="btn sec" onclick="loadTasks()">刷新</button>
+      <table style="margin-top:8px"><thead><tr><th>老人</th><th>任务</th><th>来源</th><th>到期</th><th></th></tr></thead><tbody id="taskRows"></tbody></table>
+    </div>
+  </section>
+
+  <section id="v-orders" class="hidden">
+    <div class="card"><h2>工单（橙级 24h / 红级即时）</h2>
+      <button class="btn sec" onclick="loadOrders()">刷新</button>
+      <table style="margin-top:8px"><thead><tr><th>老人</th><th>级别</th><th>类型</th><th>说明</th><th>状态</th><th></th></tr></thead><tbody id="orderRows"></tbody></table>
+    </div>
+    <div class="card"><h2>风险事件（红色 100% 人工复核）</h2>
+      <table><thead><tr><th>老人</th><th>级别</th><th>信号</th><th>动作</th><th>复核</th></tr></thead><tbody id="riskRows"></tbody></table>
+    </div>
+  </section>
+
+  <section id="v-ledger" class="hidden">
+    <div class="card"><h2>探访台账（民政留痕：时间/方式/内容/结果）</h2>
+      <div class="row"><button class="btn sec" onclick="loadLedger()">刷新</button><a href="/api/ledger.csv"><button class="btn">导出 CSV</button></a></div>
+      <table style="margin-top:8px"><thead><tr><th>老人</th><th>探访时间</th><th>方式</th><th>内容</th><th>结果</th></tr></thead><tbody id="ledgerRows"></tbody></table>
+    </div>
+  </section>
+
+  <section id="v-dash" class="hidden">
+    <div class="grid" id="kpis"></div>
+    <div class="card" style="margin-top:14px"><h2>业务基线对照（试点实测回填）</h2>
+      <p class="note">目标：接通率≥70% · 4周持续接听≥60% · 红色漏报=0 · 工单24h闭环≥95% · 社工工时节省≥50%。<br>人工基线（单次5~15元、耗时、覆盖率）需在试点社区采集后回填，本看板为 AI 侧实时数据。</p>
+    </div>
+  </section>
+
+  <section id="v-family" class="hidden">
+    <div class="card"><h2>家属视图（仅摘要与告警，不含通话全文）</h2>
+      <div class="row"><input id="famCode" placeholder="老人专属访问码"><button class="btn" onclick="loadFamily()">查看</button></div>
+      <div id="famView"></div>
+    </div>
+  </section>
+
+  <section id="v-settings" class="hidden">
+    <div class="card"><h2>LLM 底座接入（OpenAI 兼容 / 百炼）</h2>
+      <div class="row">
+        <div style="flex:1"><label>Base URL</label><input id="s_base" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" style="width:100%"></div>
+        <div><label>模型</label><input id="s_model" placeholder="qwen-plus"></div>
+      </div>
+      <label>API Key（仅存本机 SQLite，不回显）</label><input id="s_key" type="password" style="width:100%">
+      <div style="margin-top:10px"><button class="btn" onclick="saveSettings()">保存并切换</button></div>
+'      <p class="note">未配置时为演示模式（规则版对话，仅验证链路）。配置后通话走真实大模型，输出契约 {"reply","state"} 不变。<br>
+      选型建议：对话 qwen-plus（成本/延迟均衡）或 qwen-max（话术质量优先）；质检 judge 用 qwen-max。百炼 Base URL：https://dashscope.aliyuncs.com/compatible-mode/v1</p>
+    </div>
+    <div class="card"><h2>话术质量评测（具体承接/适老/共情/任务，1~5分）</h2>
+      <button class="btn sec" onclick="runQuality()">跑 6 张质量卡</button>
+      <pre id="qualityReport" class="hidden"></pre>
+      <p class="note">配置真实 LLM 后自动升级为 LLM-judge 评分；优化闭环：改 prompt/记忆/策略 → 跑质量卡 → 分数>=4 再放量。</p>'
+    </div>
+    <div class="card"><h2>评测门禁（L2 场景卡回归）</h2>
+      <button class="btn sec" onclick="runEval()">运行 20 张场景卡</button>
+      <pre id="evalReport" class="hidden"></pre>
+    </div>
+    <div class="card"><h2>数据合规</h2>
+      <div class="row">
+        <button class="btn sec" onclick="purge()">清理 180 天前转写</button>
+      </div>
+      <p class="note">保留策略：转写 180 天 · 台账 3 年 · 退订即删（档案页操作，台账匿名化保留）。录音在浏览器模拟模式下不落盘；电话管线接入后按 90 天加密存储。</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+const L={
+ dialect:{mandarin:"普通话",sichuan:"四川话",cantonese:"粤语"},
+ hearing:{ok:"听力正常",mild_loss:"轻度听障"},
+ need:{lonely_chatty:"孤独倾诉型",taciturn:"寡言少语型",health_anxious:"健康焦虑型",hearing_loss:"听力障碍型",cognitive_decline:"认知下降型",wary_refusal:"警惕拒接型"},
+ ctype:{companion_chat:"陪伴聊天",med_remind:"用药提醒",health_check:"健康问询",safety_check:"平安确认"},
+ rtype:{chest_pain:"胸痛/胸闷",fall_cannot_rise:"跌倒无法起身",suicide_ideation:"自杀意念",scam_in_progress:"疑似正在被骗",fall:"跌倒",med_stopped:"自行停药",no_food:"断粮/没吃饭",persistent_low:"持续情绪低落",poor_sleep:"睡眠差",low_appetite:"食欲下降",lonely:"孤独感"},
+ action:{transfer_human_in_call:"通话中转人工",notify_family_immediate:"立即通知家属",notify_community:"通知社区",work_order_24h:"24小时工单",notify_family:"通知家属",notify_family_app:"家属端提醒",add_next_must_ask:"下次通话跟进"},
+ emotion:{neutral:"平稳",low:"低落",anxious:"焦虑",happy:"愉快"},
+ comp:{ok:"正常",hard:"听不清",clarify:"待澄清"},
+ eng:{high:"高",normal:"一般",low:"低"},
+ strat:{continue:"继续聊",empathy_first:"共情优先",slow_repeat:"降速复述",wrap_up:"准备收尾",escalate:"紧急升级",clarify:"诚实澄清"},
+ task:{retry_call:"重试外呼",sms_notify_family:"短信告知家属",work_order_home_visit:"上门探访工单",companion_chat:"陪伴聊天",med_remind:"用药提醒",health_check:"健康问询",safety_check:"平安确认"},
+ source:{weekly_plan:"周计划",no_answer_chain:"未接通升级"},
+ channel:{"phone+sms":"电话+短信",app:"家属小程序",workbench:"社区工作台"},
+ level:{none:"无",yellow:"黄色关注",orange:"橙色事件",red:"红色事件"}
+};
+const lb=(m,k)=>(L[m]&&L[m][k])||k;
+const sigText=j=>{try{return JSON.parse(j).map(s=>`<span class="tag ${s.severity}">${lb("rtype",s.type)}</span>「${s.quote}」`).join(" ")}catch(_){return j}};
+const actText=j=>{try{return JSON.parse(j).map(a=>lb("action",a)).join("、")}catch(_){return j}};
+const $=id=>document.getElementById(id);
+let ME=null, CALL=null, voiceOn=false, rec=null;
+const TABS=[["elders","老人档案"],["call","关怀通话"],["orders","工单与风险"],["ledger","探访台账"],["dash","数据看板"],["family","家属视图"],["settings","系统设置"]];
+async function api(path,body){
+  const opt=body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{};
+  const r=await fetch(path,opt); const j=await r.json();
+  if(r.status===401){showLogin();throw new Error("未登录")}
+  if(!r.ok)throw new Error(j.error||r.status);
+  return j;
+}
+function showLogin(){$("loginView").classList.remove("hidden");$("appView").classList.add("hidden")}
+async function login(){
+  const role=$("loginRole").value;
+  try{
+    await api("/api/login",{role,name:$("loginName").value||"社工",code:$("adminCode").value});
+    ME=await api("/api/me");enterApp();
+  }catch(e){alert(e.message)}
+}
+async function logout(){await api("/api/logout",{});ME=null;showLogin()}
+function enterApp(){
+  $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
+  $("whoami").textContent=ME.session.name+"（"+(ME.session.role==="admin"?"管理员":"社工")+"）";
+  $("modeBadge").textContent="LLM: "+(ME.llm_mode==="real"?"真实底座":"演示模式");
+  $("nav").innerHTML=TABS.filter(t=>t[0]!=="settings"||ME.session.role==="admin")
+    .map(t=>`<button onclick="tab('${t[0]}')" id="tab-${t[0]}">${t[1]}</button>`).join("");
+  tab("elders");
+}
+function tab(name){
+  TABS.forEach(t=>$("v-"+t[0]).classList.toggle("hidden",t[0]!==name));
+  TABS.forEach(t=>{const b=$("tab-"+t[0]);if(b)b.classList.toggle("on",t[0]===name)});
+  ({elders:loadElders,call:loadCallView,orders:loadOrders,ledger:loadLedger,dash:loadDash,settings:loadSettings}[name]||(()=>{}))();
+}
+$("loginRole").onchange=e=>$("adminCodeWrap").classList.toggle("hidden",e.target.value!=="admin");
+
+// ---- elders ----
+let ELDERS=[];
+async function loadElders(){
+  ELDERS=await api("/api/elders");
+  $("callElder").innerHTML=ELDERS.map(e=>`<option value="${e.id}">${e.name}</option>`).join("");
+  renderElders();
+}
+function renderElders(){
+  const d=$("fltDialect").value,n=$("fltNeed").value,k=($("fltKw").value||"").trim().toLowerCase();
+  const rows=ELDERS.filter(e=>(!d||e.dialect===d)&&(!n||e.need_type===n)&&(!k||e.name.toLowerCase().includes(k)||e.id.toLowerCase().includes(k)));
+  $("elderRows").innerHTML=rows.map(e=>`<tr><td>${e.id}</td><td>${e.name}</td><td>${lb("dialect",e.dialect)} / ${lb("hearing",e.hearing)}</td><td>${lb("need",e.need_type)}</td><td><code>${e.family_code}</code></td><td><button class="btn sec" onclick="detail('${e.id}')">详情</button></td></tr>`).join("")||"<tr><td colspan=6>无匹配老人</td></tr>";
+}
+function showElderForm(){$("elderForm").classList.toggle("hidden")}
+async function createElder(){
+  if(!$("f_consent").checked)return alert("必须签署知情同意");
+  const meds=$("f_meds").value.split(";").filter(Boolean).map(s=>{const[n,t]=s.split(",");return{name:n.trim(),time:(t||"").trim()}});
+  const family=$("f_family").value.split(";").filter(Boolean).map(s=>{const[r,n]=s.split(":");return{rel:(r||"").trim(),name:(n||"").trim()}});
+  try{
+    const r=await api("/api/elders",{name:$("f_name").value,age:+$("f_age").value,gender:$("f_gender").value,dialect:$("f_dialect").value,
+      hearing:$("f_hearing").value,need_type:$("f_need").value,meds,family,interests:[],
+      consent:{recording:true,ai_identity_ack:true}});
+    alert("已创建，家属访问码："+r.family_code);$("elderForm").classList.add("hidden");loadElders();
+  }catch(e){alert(e.message)}
+}
+async function detail(id){
+  const d=await api("/api/elder?id="+id);
+  const e=d.elder;
+  $("elderDetail").classList.remove("hidden");
+  $("elderDetail").innerHTML=`<h2>${e.name} · 详情</h2>
+   <h3>情节记忆（个性化开场来源）</h3><table><tbody>${d.episodes.map(x=>`<tr><td>${x.topic}</td><td>${lb("emotion",x.emotion)}</td></tr>`).join("")||"<tr><td>暂无</td></tr>"}</tbody></table>
+   <h3>通话摘要</h3><table><tbody>${d.calls.map(c=>`<tr><td>${lb("ctype",c.type)}</td><td>${c.summary}</td><td>${c.duration_s}s / ${c.cost}元</td></tr>`).join("")||"<tr><td>暂无</td></tr>"}</tbody></table>
+   <h3>通知记录</h3><table><tbody>${d.notifications.map(n=>`<tr><td>${n.channel}</td><td>${n.target}</td><td>${n.message}</td></tr>`).join("")||"<tr><td>暂无</td></tr>"}</tbody></table>
+   ${ME.session.role==="admin"?`<div style="margin-top:10px"><button class="btn sec" onclick="unsub('${e.id}')">退订并删除数据</button></div>`:""}`;
+}
+async function unsub(id){if(confirm("退订即删：转写/记忆删除，台账匿名化保留。确认？")){await api("/api/unsubscribe",{elder_id:id});detail(id);loadElders()}}
+
+// ---- call ----
+async function loadCallView(){loadElders();loadTasks()}
+async function loadTasks(){
+  const rows=await api("/api/tasks");
+  $("taskRows").innerHTML=rows.map(t=>`<tr><td>${t.name||t.elder_id}</td><td>${lb("task",t.type)}</td><td>${lb("source",t.source)}</td><td>${new Date(t.due_at*1000).toLocaleString()}</td><td><button class="btn sec" onclick="doneTask(${t.id})">完成</button></td></tr>`).join("")||"<tr><td colspan=5>暂无待呼任务</td></tr>";
+}
+async function doneTask(id){await api("/api/task/done",{id});loadTasks()}
+async function startCall(){
+  try{
+    const act=await api("/api/call/active?elder_id="+$("callElder").value);
+    if(act.call_id){resumeCall(act);return}
+    const r=await api("/api/call/start",{elder_id:$("callElder").value,type:$("callType").value});
+    CALL=r.call_id;$("chat").classList.remove("hidden");$("inputRow").classList.remove("hidden");
+    $("btnEnd").classList.remove("hidden");$("btnStart").disabled=true;$("callResult").innerHTML="";$("escBanner").innerHTML="";
+    $("chat").innerHTML="";addMsg("sys","AI 语音关怀通话 · 老人已知情同意 · 通话内容按约定保存");
+    addMsg("ai",r.opening);speak(r.opening,0.85);
+    $("stateChips").textContent="必问项："+r.must_ask.join("、");
+  }catch(e){alert(e.message)}
+}
+function resumeCall(act){
+  CALL=act.call_id;$("chat").classList.remove("hidden");$("inputRow").classList.remove("hidden");
+  $("btnEnd").classList.remove("hidden");$("btnStart").disabled=true;$("callResult").innerHTML="";
+  $("chat").innerHTML="";addMsg("sys","已恢复进行中的通话（刷新/断线重连）");
+  act.transcript.forEach(m=>addMsg(m.role,m.text));
+  $("stateChips").textContent="必问项："+act.must_ask.join("、")+" · 已完成："+(act.must_ask_done.join("、")||"无");
+  const last=act.transcript.filter(m=>m.role==="ai").pop();
+  if(last)speak(last.text,0.85);
+}
+function addMsg(role,text){
+  const d=document.createElement("div");d.className="msg "+role;
+  d.innerHTML=`<div class="who">${role==="ai"?"小暖":role==="sys"?"系统":"老人"}</div><div class="bub"></div>`;
+  d.querySelector(".bub").textContent=text;$("chat").appendChild(d);$("chat").scrollTop=1e9;
+}
+async function sendTurn(text){
+  text=text||$("elderInput").value.trim();if(!text||!CALL)return;
+  $("elderInput").value="";addMsg("elder",text);
+  try{
+    const r=await api("/api/call/turn",{call_id:CALL,text});
+    addMsg("ai",r.reply);speak(r.reply,r.tts.speed);
+    $("stateChips").textContent=`情绪:${lb("emotion",r.state.emotion)} · 理解:${lb("comp",r.state.comprehension)} · 兴致:${lb("eng",r.state.engagement)} · 策略:${lb("strat",r.state.strategy_next)} · 必问完成:${r.must_ask_done.join("、")||"无"}`;
+    if(r.escalation)$("escBanner").innerHTML=`<div class="banner red">🚨 红色风险实时升级：${r.escalation.message}</div>`;
+    if(r.state.strategy_next==="wrap_up")setTimeout(endCall,1500);
+  }catch(e){alert(e.message)}
+}
+async function endCall(){
+  if(!CALL)return;const cid=CALL;CALL=null;stopVoice();
+  const r=await api("/api/call/end",{call_id:cid});
+  $("btnStart").disabled=false;$("btnEnd").classList.add("hidden");$("inputRow").classList.add("hidden");
+  const lv=r.risk.level;
+  $("callResult").innerHTML=`<div class="banner ${lv==="red"?"red":"info"}">通话结束：${r.summary}<br>时长 ${r.duration_s}s · 成本 ${r.cost_yuan}元 · 风险 <span class="tag ${lv}">${lb("level",lv)}</span> ${r.risk.actions.map(a=>lb("action",a)).join("、")||"无"} · 台账已写入</div>`;
+}
+async function markNoAnswer(){
+  const r=await api("/api/call/noanswer",{elder_id:$("callElder").value});
+  alert("未接通升级链已入任务队列：\n"+r.chain.map(s=>s.t+" → "+lb("task",s.action)).join("\n"));loadTasks();
+}
+// ---- voice (Web Speech API) ----
+let sr=null, srActive=false, currentAudio=null, aiSpeaking=false, serverVoice=false, srBroken=false;
+function voiceNote(msg){ $("voiceNote").innerHTML = msg ? `<div class="banner info">${msg}</div>` : ""; }
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  serverVoice=voiceOn&&ME&&ME.llm_mode==="real";
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  $("btnVoice").textContent="🎙 语音模式："+(voiceOn?(SR?"开":"开（仅语音输出）"):"关");
+  $("btnTalk").classList.toggle("hidden",!(voiceOn&&SR&&!srBroken));
+  if(!voiceOn){stopVoice();voiceNote("");return}
+  if(!SR||srBroken){voiceNote("当前浏览器语音输入不可用：小暖会用真人语音说话，您用文字回复即可。");return}
+  voiceNote("点「开始说话」后直接说，识别文字会实时显示；说完自动发送。小暖说话时麦克风自动让路。");
+}
+function talkToggle(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return;
+  if(srActive){try{sr.stop()}catch(_){}return}
+  if(currentAudio){try{currentAudio.pause()}catch(_){}}
+  if(window.speechSynthesis)speechSynthesis.cancel();
+  aiSpeaking=false;
+  sr=new SR();sr.lang="zh-CN";sr.interimResults=true;sr.continuous=false;
+  let finalText="";
+  sr.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)finalText+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    $("elderInput").value=finalText+interim;
+    if(finalText){srActive=false;$("btnTalk").textContent="🎙 开始说话";const txt=finalText;finalText="";sendTurn(txt)}
+  };
+  sr.onerror=e=>{srActive=false;$("btnTalk").textContent="🎙 开始说话";
+    if(["network","not-allowed","service-not-allowed"].includes(e.error)){
+      srBroken=true;$("btnTalk").classList.add("hidden");
+      voiceNote("当前环境语音输入不可用（浏览器在线识别被网络拦截，且本订阅不含服务端识别）。小暖仍用真人语音说话，您用文字回复即可；完整双向语音需标准 DashScope Key 或电话线路接入。");
+    }else{voiceNote("语音识别出错（"+e.error+"）。请再试一次，或直接用文字输入；您的话不会被丢弃。")}};
+  sr.onend=()=>{if(srActive){srActive=false;$("btnTalk").textContent="🎙 开始说话";
+    if(!$("elderInput").value)voiceNote("没听到完整的话。请再按「开始说话」，或文字输入。")}};
+  try{sr.start();srActive=true;$("btnTalk").textContent="⏹ 停止";voiceNote("🎙 录音中…请说话")}
+  catch(e){voiceNote("无法启动麦克风："+e.message)}
+}
+function stopVoice(){if(sr){try{sr.stop()}catch(_){}sr=null}srActive=false;
+  if(currentAudio){try{currentAudio.pause()}catch(_){}currentAudio=null}
+  if(window.speechSynthesis)speechSynthesis.cancel();aiSpeaking=false;
+  $("btnTalk").textContent="🎙 开始说话";}
+function speak(text,rate){
+  if(!voiceOn)return;
+  if(currentAudio){try{currentAudio.pause()}catch(_){}}
+  if(serverVoice){
+    fetch("/api/voice/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})})
+      .then(r=>r.json()).then(j=>{
+        if(j.url){currentAudio=new Audio(j.url);aiSpeaking=true;
+          currentAudio.onended=()=>{aiSpeaking=false};
+          currentAudio.play().catch(()=>{aiSpeaking=false;fallbackSpeak(text,rate)})}
+        else fallbackSpeak(text,rate);
+      }).catch(()=>fallbackSpeak(text,rate));
+    return;
+  }
+  fallbackSpeak(text,rate);
+}
+function fallbackSpeak(text,rate){
+  if(!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang="zh-CN";u.rate=Math.max(.6,Math.min(1.2,rate||.85));
+  aiSpeaking=true;u.onend=()=>{aiSpeaking=false};
+  speechSynthesis.speak(u);
+}
+// ---- orders / risks ----
+async function loadOrders(){
+  const os=await api("/api/orders");
+  $("orderRows").innerHTML=os.map(o=>`<tr><td>${o.name||o.elder_id}</td><td><span class="tag ${o.level}">${o.level}</span></td><td>${lb("rtype",o.type)}</td><td>${o.note}</td><td>${o.status==="open"?"待处置":"已闭环"}</td><td>${o.status==="open"?`<button class="btn sec" onclick="closeOrder(${o.id})">闭环</button>`:""}</td></tr>`).join("")||"<tr><td colspan=6>暂无工单</td></tr>";
+  const rs=await api("/api/risks");
+  $("riskRows").innerHTML=rs.map(r=>`<tr><td>${r.name||r.elder_id}</td><td><span class="tag ${r.level}">${r.level}</span></td><td>${sigText(r.signals_json)}</td><td>${actText(r.actions_json)}</td><td>${r.reviewed?"已复核":`<button class="btn sec" onclick="review(${r.id})">复核</button>`}</td></tr>`).join("")||"<tr><td colspan=5>暂无风险事件</td></tr>";
+}
+async function closeOrder(id){const note=prompt("处置说明（闭环留痕）");if(note===null)return;await api("/api/order/close",{id,note});loadOrders()}
+async function review(id){await api("/api/risk/review",{id});loadOrders()}
+// ---- ledger / dash ----
+async function loadLedger(){
+  const rows=await api("/api/ledger");
+  $("ledgerRows").innerHTML=rows.map(r=>`<tr><td>${r.name}</td><td>${r.visit_time}</td><td>${r.method}</td><td>${r.content}</td><td>${r.result}</td></tr>`).join("")||"<tr><td colspan=5>暂无台账</td></tr>";
+}
+async function loadDash(){
+  const m=await api("/api/metrics");
+  const items=[["服务老人",m.elders],["已完成通话",m.calls],["平均时长",m.avg_duration_s+"s"],["任务完成率",m.task_completion==null?"—":Math.round(m.task_completion*100)+"%"],["工单闭环率",m.order_closure_rate==null?"—":Math.round(m.order_closure_rate*100)+"%"],["待处置工单",m.orders_open],["累计成本",m.total_cost_yuan+"元"],["红色事件",(m.risk_by_level.red||0)]];
+  $("kpis").innerHTML=items.map(([l,v])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+}
+// ---- family ----
+async function loadFamily(){
+  const d=await api("/api/family?code="+encodeURIComponent($("famCode").value));
+  if(d.error){$("famView").innerHTML=`<div class="banner red">${d.error}</div>`;return}
+  $("famView").innerHTML=`<h3>${d.name} · 近期关怀摘要</h3>
+   <table><tbody>${d.summaries.map(s=>`<tr><td>${s.time}</td><td>${s.summary}</td><td>${s.duration_s}s</td></tr>`).join("")||"<tr><td>暂无</td></tr>"}</tbody></table>
+   <h3>告警与提醒</h3><table><tbody>${d.alerts.map(a=>`<tr><td>${lb("channel",a.channel)}</td><td>${a.message}</td></tr>`).join("")||"<tr><td>暂无</td></tr>"}</tbody></table>
+   <p class="note">情绪趋势：${d.emotion_trend.map(e=>lb("emotion",e)).join(" → ")||"暂无"}。通话全文与录音不对家属开放（老人隐私边界）。</p>`;
+}
+// ---- settings ----
+async function loadSettings(){
+  const s=await api("/api/settings");
+  $("s_base").value=s.llm_base;$("s_model").value=s.llm_model;
+}
+async function saveSettings(){
+  await api("/api/settings",{llm_base:$("s_base").value,llm_model:$("s_model").value,llm_key:$("s_key").value});
+  ME=await api("/api/me");$("modeBadge").textContent="LLM: "+(ME.llm_mode==="real"?"真实底座":"演示模式");
+  alert("已保存");
+}
+async function runEval(){
+  $("evalReport").classList.remove("hidden");$("evalReport").textContent="运行中…";
+  const r=await api("/api/eval",{});
+  $("evalReport").textContent=r.report+(r.exit===0?"\n✅ 门禁全部通过":"\n❌ 门禁未通过");
+}
+async function runQuality(){
+  $("qualityReport").classList.remove("hidden");$("qualityReport").textContent="评测中…";
+  const r=await api("/api/eval/quality",{});
+  $("qualityReport").textContent=r.report;
+}
+async function purge(){const r=await api("/api/purge",{days:180});alert("已清理转写 "+r.deleted_transcripts+" 条")}
+// ---- boot ----
+(async()=>{try{ME=await api("/api/me");if(ME.session)enterApp();else showLogin()}catch(_){showLogin()}})();
+</script>
+</body>
+</html>

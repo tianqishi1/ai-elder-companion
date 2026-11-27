@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.db
+app/static/voice/
+app/voice_test.mp3
+app/probe_*.py
+app/patch_*.py
+app/fix_*.py
+app/setup_key.py
+app/quality_report_*.txt
+app/_check.js
+ppt_build/
+.codex-finalizer/
+node_modules/

@@ -1,0 +1,8 @@
+{
+  "lonely_chatty":   {"talk_ratio_max":0.3,"sentence_len_max":20,"question_style":"open","topic_lib":["life_story","grandkids","hobby"],"duration_cap_min":15,"tts":{"speed":0.85,"volume":"+3dB"},"vad_silence_ms":1800,"opening":"frag_open_familiar","closing":"frag_close_warm"},
+  "taciturn":        {"talk_ratio_max":0.5,"sentence_len_max":14,"question_style":"choice","topic_lib":["hobby","food"],"duration_cap_min":5,"tts":{"speed":0.85,"volume":"+3dB"},"vad_silence_ms":2000,"opening":"frag_open_short","closing":"frag_close_short"},
+  "health_anxious":  {"talk_ratio_max":0.4,"sentence_len_max":18,"question_style":"closed","topic_lib":["health_routine","family"],"duration_cap_min":10,"tts":{"speed":0.8,"volume":"+3dB"},"vad_silence_ms":1800,"opening":"frag_open_familiar","closing":"frag_close_warm"},
+  "hearing_loss":    {"talk_ratio_max":0.4,"sentence_len_max":12,"question_style":"closed","topic_lib":["food","family"],"duration_cap_min":8,"tts":{"speed":0.7,"volume":"+6dB"},"vad_silence_ms":2200,"opening":"frag_open_short","closing":"frag_close_short"},
+  "cognitive_decline":{"talk_ratio_max":0.4,"sentence_len_max":12,"question_style":"closed","topic_lib":["family","routine"],"duration_cap_min":10,"tts":{"speed":0.75,"volume":"+3dB"},"vad_silence_ms":2200,"opening":"frag_open_familiar","closing":"frag_close_warm"},
+  "wary_refusal":    {"talk_ratio_max":0.3,"sentence_len_max":14,"question_style":"closed","topic_lib":["identity"],"duration_cap_min":4,"tts":{"speed":0.85,"volume":"+3dB"},"vad_silence_ms":1800,"opening":"frag_open_trust","closing":"frag_close_short"}
+}

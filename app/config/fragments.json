@@ -1,0 +1,71 @@
+{
+ "frag_open_familiar": {
+  "scene": "开场-熟人感",
+  "variants": {
+   "sichuan|ok": "{name}{addr}，我是小暖呀，社区的小暖。上回您摆的{last_topic}，后来咋样了哦？",
+   "sichuan|mild_loss": "{name}{addr}，我是小暖，社区的小暖。上回说的{last_topic}，还好不？",
+   "mandarin|ok": "{name}{addr}，我是小暖呀，社区的小暖。上回您说的{last_topic}，后来怎么样啦？",
+   "mandarin|mild_loss": "{name}{addr}，我是小暖，社区的小暖。上回说的{last_topic}，还好吗？"
+  }
+ },
+ "frag_open_short": {
+  "scene": "开场-简短",
+  "variants": {
+   "sichuan|ok": "{name}{addr}，我是小暖呀。今天身体要得不？",
+   "sichuan|mild_loss": "{name}{addr}，我是小暖。今天身体好不好？",
+   "mandarin|ok": "{name}{addr}，我是小暖呀。今天身体好吗？",
+   "mandarin|mild_loss": "{name}{addr}，我是小暖。今天身体好吗？"
+  }
+ },
+ "frag_open_trust": {
+  "scene": "开场-建立信任",
+  "variants": {
+   "mandarin|ok": "{name}{addr}您好，我是社区的小暖，是您女儿{family_name}帮您订的关怀服务，每周陪您聊聊。您现在方便吗？",
+   "sichuan|ok": "{name}{addr}您好，我是社区的小暖，您女儿{family_name}帮您订的，每周陪您摆哈龙门阵。方便不？"
+  }
+ },
+ "frag_close_warm": {
+  "scene": "收尾-温暖",
+  "variants": {
+   "sichuan|ok": "要得，今天摆得开心。我周{next_dow}再给您来电话哈，保重身体哦。",
+   "mandarin|ok": "今天聊得真好。我周{next_dow}再给您打电话，您保重身体。"
+  }
+ },
+ "frag_close_short": {
+  "scene": "收尾-简短",
+  "variants": {
+   "sichuan|ok": "好嘛，不打扰您了。周{next_dow}再来电哈。",
+   "mandarin|ok": "好的，不打扰您了。周{next_dow}再来电。"
+  }
+ },
+ "frag_remind_med": {
+  "scene": "用药提醒",
+  "variants": {
+   "sichuan|ok": "{name}{addr}，该吃{med}了哈，吃了没得？",
+   "sichuan|mild_loss": "{name}{addr}，吃药时间到了。{med}，吃了吗？",
+   "mandarin|ok": "{name}{addr}，到吃{med}的时间啦，您吃了吗？",
+   "mandarin|mild_loss": "{name}{addr}，吃药时间到了。{med}，吃了吗？"
+  }
+ },
+ "frag_empathy_low": {
+  "scene": "共情-低落",
+  "variants": {
+   "sichuan|ok": "听起来您心里不好受哦，慢慢摆嘛，我听到起的。",
+   "mandarin|ok": "听起来您心里不好受，慢慢说，我听着呢。"
+  }
+ },
+ "frag_clarify": {
+  "scene": "诚实澄清",
+  "variants": {
+   "sichuan|ok": "您说的「{word}」是啥子意思哦？我没听明白，您再摆一哈嘛。",
+   "mandarin|ok": "您说的「{word}」是什么意思呀？我没听明白，您再说一遍好吗？"
+  }
+ },
+ "frag_emergency": {
+  "scene": "紧急-转人工",
+  "variants": {
+   "sichuan|ok": "{name}{addr}您莫慌，我马上帮您联系家人和社区，您先坐到歇到起。",
+   "mandarin|ok": "{name}{addr}您别慌，我马上帮您联系家人和社区，您先坐下休息。"
+  }
+ }
+}
