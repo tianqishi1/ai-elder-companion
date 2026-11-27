@@ -12,3 +12,5 @@ app/_check.js
 ppt_build/
 .codex-finalizer/
 node_modules/
+.chart-data-*/
+push_repo.py
